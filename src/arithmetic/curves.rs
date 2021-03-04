@@ -3,16 +3,24 @@
 
 use core::cmp;
 use core::ops::{Add, Mul, Sub};
+
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
+
 use group::prime::{PrimeCurve, PrimeCurveAffine};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use super::{FieldExt, Group};
 
+#[cfg(feature = "std")]
 use std::io::{self, Read, Write};
 
 /// This trait is a common interface for dealing with elements of an elliptic
 /// curve group in a "projective" form, where that arithmetic is usually more
 /// efficient.
+///
+/// Currently requires the `alloc` feature flag because of `hash_to_curve`.
+#[cfg(feature = "alloc")]
 pub trait CurveExt:
     PrimeCurve<Affine = <Self as CurveExt>::AffineExt>
     + group::Group<Scalar = <Self as CurveExt>::ScalarExt>
@@ -81,6 +89,7 @@ pub trait CurveExt:
 
 /// This trait is the affine counterpart to `Curve` and is used for
 /// serialization, storage in memory, and inspection of $x$ and $y$ coordinates.
+#[cfg(feature = "std")]
 pub trait CurveAffine:
     PrimeCurveAffine<
         Scalar = <Self as CurveAffine>::ScalarExt,
@@ -135,12 +144,14 @@ pub trait CurveAffine:
 }
 
 /// The affine coordinates of a point on an elliptic curve.
+#[cfg(feature = "alloc")]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Coordinates<C: CurveAffine> {
     pub(crate) x: C::Base,
     pub(crate) y: C::Base,
 }
 
+#[cfg(feature = "alloc")]
 impl<C: CurveAffine> Coordinates<C> {
     /// Returns the x-coordinate.
     ///
@@ -171,6 +182,7 @@ impl<C: CurveAffine> Coordinates<C> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<C: CurveAffine> ConditionallySelectable for Coordinates<C> {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         Coordinates {

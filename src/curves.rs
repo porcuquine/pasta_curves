@@ -2,9 +2,13 @@
 //! groups.
 
 use core::cmp;
-use core::fmt::Debug;
+use core::fmt;
 use core::iter::Sum;
 use core::ops::{Add, Mul, Neg, Sub};
+
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
+
 use ff::Field;
 use group::{
     cofactor::CofactorGroup,
@@ -15,7 +19,10 @@ use rand::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use super::{Fp, Fq};
-use crate::arithmetic::{Coordinates, CurveAffine, CurveExt, FieldExt, Group};
+use crate::arithmetic::{FieldExt, Group};
+
+#[cfg(feature = "alloc")]
+use crate::arithmetic::{Coordinates, CurveAffine, CurveExt};
 
 macro_rules! new_curve_impl {
     (($($privacy:tt)*), $name:ident, $name_affine:ident, $iso:ident, $base:ident, $scalar:ident,
@@ -47,8 +54,8 @@ macro_rules! new_curve_impl {
             infinity: Choice,
         }
 
-        impl std::fmt::Debug for $name_affine {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        impl fmt::Debug for $name_affine {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
                 if self.infinity.into() {
                     write!(f, "Infinity")
                 } else {
@@ -96,6 +103,7 @@ macro_rules! new_curve_impl {
             }
         }
 
+        #[cfg(feature = "alloc")]
         impl CurveExt for $name {
             type ScalarExt = $scalar;
             type Base = $base;
@@ -642,6 +650,7 @@ macro_rules! new_curve_impl {
             }
         }
 
+        #[cfg(feature = "alloc")]
         impl CurveAffine for $name_affine {
             type ScalarExt = $scalar;
             type Base = $base;
@@ -825,6 +834,7 @@ macro_rules! impl_projective_curve_specific {
     };
 }
 
+#[cfg(feature = "alloc")]
 macro_rules! impl_projective_curve_ext {
     ($name:ident, $iso:ident, $base:ident, special_a0_b5) => {
         fn hash_to_curve<'a>(domain_prefix: &'a str) -> Box<dyn Fn(&[u8]) -> Self + 'a> {
@@ -861,6 +871,7 @@ macro_rules! impl_projective_curve_ext {
     };
     ($name:ident, $iso:ident, $base:ident, general) => {
         /// Unimplemented: hashing to this curve is not supported
+        #[cfg(feature = "alloc")]
         fn hash_to_curve<'a>(_domain_prefix: &'a str) -> Box<dyn Fn(&[u8]) -> Self + 'a> {
             unimplemented!()
         }

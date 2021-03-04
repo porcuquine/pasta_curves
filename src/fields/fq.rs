@@ -1,14 +1,20 @@
 use core::convert::TryInto;
 use core::fmt;
 use core::ops::{Add, Mul, Neg, Sub};
-use lazy_static::lazy_static;
+
 use rand::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
+
+#[cfg(feature = "alloc")]
+use lazy_static::lazy_static;
 
 #[cfg(feature = "bits")]
 use ff::{FieldBits, PrimeFieldBits};
 
-use crate::arithmetic::{adc, mac, sbb, FieldExt, Group, SqrtTables};
+use crate::arithmetic::{adc, mac, sbb, FieldExt, Group};
+
+#[cfg(feature = "alloc")]
+use crate::arithmetic::SqrtTables;
 
 /// This represents an element of $\mathbb{F}_q$ where
 ///
@@ -64,23 +70,23 @@ impl PartialEq for Fq {
     }
 }
 
-impl std::cmp::Ord for Fq {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+impl core::cmp::Ord for Fq {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         let left = self.to_bytes();
         let right = other.to_bytes();
         left.iter()
             .zip(right.iter())
             .rev()
             .find_map(|(left_byte, right_byte)| match left_byte.cmp(right_byte) {
-                std::cmp::Ordering::Equal => None,
+                core::cmp::Ordering::Equal => None,
                 res => Some(res),
             })
-            .unwrap_or(std::cmp::Ordering::Equal)
+            .unwrap_or(core::cmp::Ordering::Equal)
     }
 }
 
-impl std::cmp::PartialOrd for Fq {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+impl core::cmp::PartialOrd for Fq {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
@@ -606,6 +612,7 @@ impl PrimeFieldBits for Fq {
     }
 }
 
+#[cfg(feature = "alloc")]
 lazy_static! {
     // The perfect hash parameters are found by `squareroottab.sage` in zcash/pasta.
     static ref FQ_TABLES: SqrtTables<Fq> = SqrtTables::new(0x116A9E, 1206);
@@ -649,10 +656,23 @@ impl FieldExt for Fq {
     ]);
 
     fn sqrt_ratio(num: &Self, div: &Self) -> (Choice, Self) {
+        #[cfg(not(feature = "alloc"))]
+        {
+            let _ = (num, div);
+            unimplemented!()
+        }
+
+        #[cfg(feature = "alloc")]
         FQ_TABLES.sqrt_ratio(num, div)
     }
 
     fn sqrt_alt(&self) -> (Choice, Self) {
+        #[cfg(not(feature = "alloc"))]
+        {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "alloc")]
         FQ_TABLES.sqrt_alt(self)
     }
 

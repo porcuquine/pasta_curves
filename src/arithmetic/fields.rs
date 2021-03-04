@@ -1,15 +1,24 @@
 //! This module contains the `Field` abstraction that allows us to write
 //! code that generalizes over a pair of fields.
 
+use core::marker::PhantomData;
 use core::mem::size_of;
+
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+#[cfg(feature = "alloc")]
+use core::assert;
+#[cfg(feature = "alloc")]
+use core::convert::TryInto;
+
 use static_assertions::const_assert;
-use std::assert;
-use std::convert::TryInto;
-use std::marker::PhantomData;
 use subtle::{Choice, ConstantTimeEq, CtOption};
 
 use super::Group;
 
+#[cfg(feature = "std")]
 use std::io::{self, Read, Write};
 
 const_assert!(size_of::<usize>() >= 4);
@@ -83,6 +92,7 @@ pub trait FieldExt:
     fn to_bytes(&self) -> [u8; 32];
 
     /// Writes this element in its normalized, little endian form into a buffer.
+    #[cfg(feature = "std")]
     fn write<W: Write>(&self, writer: &mut W) -> io::Result<()> {
         let compressed = self.to_bytes();
         writer.write_all(&compressed[..])
@@ -94,6 +104,7 @@ pub trait FieldExt:
 
     /// Reads a normalized, little endian represented field element from a
     /// buffer.
+    #[cfg(feature = "std")]
     fn read<R: Read>(reader: &mut R) -> io::Result<Self> {
         let mut compressed = [0u8; 32];
         reader.read_exact(&mut compressed[..])?;
@@ -136,6 +147,7 @@ pub trait FieldExt:
 
     /// Performs a batch inversion using Montgomery's trick, returns the product
     /// of every inverse. Zero inputs are ignored.
+    #[cfg(feature = "alloc")]
     fn batch_invert(v: &mut [Self]) -> Self {
         let mut tmp = Vec::with_capacity(v.len());
 
@@ -180,6 +192,7 @@ impl<F: FieldExt> SqrtHasher<F> {
 }
 
 /// Tables used for square root computation.
+#[cfg(feature = "alloc")]
 #[derive(Debug)]
 pub struct SqrtTables<F: FieldExt> {
     hasher: SqrtHasher<F>,
@@ -190,9 +203,12 @@ pub struct SqrtTables<F: FieldExt> {
     g3: Box<[F; 129]>,
 }
 
+#[cfg(feature = "alloc")]
 impl<F: FieldExt> SqrtTables<F> {
     /// Build tables given parameters for the perfect hash.
     pub fn new(hash_xor: u32, hash_mod: usize) -> Self {
+        use alloc::vec;
+
         let hasher = SqrtHasher {
             hash_xor,
             hash_mod,
